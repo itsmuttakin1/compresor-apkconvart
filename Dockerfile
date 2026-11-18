@@ -5,9 +5,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PORT=5000
 
-# Install FFmpeg, OpenJDK 17, zip, unzip
+# Install OpenJDK 17, zip, unzip for APK building
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg \
     zip \
     unzip \
     openjdk-17-jre-headless \

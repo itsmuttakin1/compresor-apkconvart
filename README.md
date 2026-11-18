@@ -1,60 +1,15 @@
-# ToolKit Pro — Video Compressor & APK Builder
+# 📦 APK Converter & Builder (Mr Ghost Edition)
 
-A powerful web tool with two features:
-1. 🎬 **Video Compressor** — FFmpeg-powered video compression
-2. 📦 **APK Builder** — Convert URL/HTML/ZIP games into Android APKs
+যেকোনো Website URL, HTML ফাইল বা Game ZIP ফাইল থেকে সরাসরি Android APK বানানোর টুল — Railway হোস্টিং রেডি!
 
-## Features
+## ✨ Features
+- **Website URL → APK**: যেকোনো সাইট বা itch.io গেম লিংক দিলেই ফুলস্ক্রিন Android অ্যাপে রূপান্তর করে।
+- **HTML / Game ZIP → APK**: অফলাইন HTML ফাইল বা গেমের ZIP ফাইল আপলোড করলে অ্যাপের ভেতরে বান্ডেল করে দেয়।
+- **Custom App Name & Package Name**: নিজের ইচ্ছেমতো নাম ও প্যাকেজ নেম (যেমন: `com.mrghost.mygame`)।
+- **Custom Icon**: অ্যাপ আইকন আপলোড করলে সব Android ডেনসিটির জন্য স্বয়ংক্রিয়ভাবে রিসাইজ করে।
+- **🔔 Custom Toast "Mr Ghost"**: প্রতিটি তৈরি হওয়া অ্যাপ লঞ্চ হওয়ার সাথে সাথে **"Mr Ghost"** টোস্ট মেসেজ শো করবে!
 
-### Video Compressor
-- Supports MP4, AVI, MKV, MOV, WebM, FLV, and more
-- Quality control: Low / Medium / High
-- Resolution: Original / 1080p / 720p / 480p
-- Shows size reduction stats
-- Background processing with progress
-
-### APK Builder
-- **Website URL** → APK (WebView wrapper)
-- **HTML file** → APK (embedded)
-- **Game ZIP** → APK (full game bundled)
-- Custom app name, package name, app icon
-- Resizes icon to all Android densities
-
-## Local Development
-
-```bash
-pip install -r requirements.txt
-python app.py
-# Visit http://localhost:5000
-```
-
-> **Note:** FFmpeg must be installed for video compression.
-> `winget install ffmpeg` (Windows) or `apt install ffmpeg` (Linux)
-
-## Railway Deployment
-
-### Option A: GitHub (Recommended)
-1. Push this folder to a GitHub repo
-2. Go to [railway.app](https://railway.app) → New Project → Deploy from GitHub
-3. Select the repo → Railway auto-detects Python + FFmpeg via nixpacks.toml
-4. Done! Get your URL from Railway dashboard
-
-### Option B: Railway CLI
-```bash
-npm install -g @railway/cli
-railway login
-railway init
-railway up
-```
-
-## Environment Variables (Railway)
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT`   | 5000    | Auto-set by Railway |
-
-## Tech Stack
-- **Backend:** Python / Flask
-- **Video:** FFmpeg (via system binary)
-- **APK:** Android SDK + Gradle (auto-detected on Railway)
-- **Frontend:** Vanilla HTML/CSS/JS (no framework needed)
-- **Deploy:** Nixpacks on Railway
+## 🚀 Railway Deployment
+1. এই রিপোজিটরিটি Railway-তে যুক্ত করো।
+2. Railway স্বয়ংক্রিয়ভাবে `Dockerfile` দিয়ে বিল্ড ও ডিপ্লয় করে নেবে।
+3. Settings > Domains থেকে ফ্রি ডোমেইন জেনারেট করলেই লাইভ ওয়েবসাইট তৈরি!

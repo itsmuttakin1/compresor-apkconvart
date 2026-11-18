@@ -4,12 +4,11 @@ import uuid
 import json
 import shutil
 import zipfile
-import requests
 import subprocess
 import threading
 import time
 from pathlib import Path
-from flask import Flask, render_template, request, jsonify, send_file, url_for
+from flask import Flask, render_template, request, jsonify, send_file
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from PIL import Image
@@ -29,84 +28,26 @@ for folder in [UPLOAD_FOLDER, OUTPUT_FOLDER, APK_WORK_DIR]:
 # Job tracking
 jobs = {}
 
-ALLOWED_VIDEO = {'mp4', 'avi', 'mov', 'mkv', 'webm', 'flv', 'wmv', 'm4v', '3gp'}
 ALLOWED_GAME = {'html', 'htm', 'zip', 'png', 'jpg', 'jpeg', 'gif', 'js', 'css'}
 ALLOWED_ICON = {'png', 'jpg', 'jpeg', 'ico', 'webp'}
 
 def allowed_file(filename, allowed_set):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_set
 
-def run_ffmpeg(cmd):
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
-    return result.returncode, result.stdout, result.stderr
-
-# ─────────────────────────────────────────────
-#  VIDEO COMPRESSOR
-# ─────────────────────────────────────────────
-@app.route('/compress', methods=['POST'])
-def compress_video():
-    if 'video' not in request.files:
-        return jsonify({'error': 'No video file provided'}), 400
-    
-    file = request.files['video']
-    if not file or not allowed_file(file.filename, ALLOWED_VIDEO):
-        return jsonify({'error': 'Invalid video file'}), 400
-
-    quality = request.form.get('quality', 'medium')
-    resolution = request.form.get('resolution', 'original')
-    
-    quality_map = {
-        'low':    {'crf': '35', 'preset': 'fast'},
-        'medium': {'crf': '28', 'preset': 'medium'},
-        'high':   {'crf': '22', 'preset': 'slow'},
+TOAST_HTML_SNIPPET = """
+<div id="mr-ghost-toast" style="position:fixed;bottom:50px;left:50%;transform:translateX(-50%);background:rgba(20,20,20,0.92);color:#ffffff;padding:12px 28px;border-radius:30px;font-family:sans-serif;font-size:15px;font-weight:600;letter-spacing:0.5px;box-shadow:0 6px 20px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.15);z-index:9999999;transition:opacity 0.6s ease;pointer-events:none;text-align:center;">Mr Ghost</div>
+<script>
+(function(){
+  setTimeout(function() {
+    var t = document.getElementById('mr-ghost-toast');
+    if (t) {
+      t.style.opacity = '0';
+      setTimeout(function(){ if(t && t.parentNode) t.parentNode.removeChild(t); }, 650);
     }
-    q = quality_map.get(quality, quality_map['medium'])
-    
-    job_id = str(uuid.uuid4())
-    jobs[job_id] = {'status': 'processing', 'progress': 0, 'type': 'video'}
-    
-    ext = file.filename.rsplit('.', 1)[1].lower()
-    input_path  = os.path.join(UPLOAD_FOLDER, f'{job_id}_input.{ext}')
-    output_path = os.path.join(OUTPUT_FOLDER, f'{job_id}_compressed.mp4')
-    file.save(input_path)
-    
-    def do_compress():
-        try:
-            cmd = ['ffmpeg', '-i', input_path, '-c:v', 'libx264',
-                   '-crf', q['crf'], '-preset', q['preset'],
-                   '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart']
-            
-            if resolution != 'original':
-                res_map = {'480p': '854:480', '720p': '1280:720', '1080p': '1920:1080'}
-                if resolution in res_map:
-                    cmd += ['-vf', f'scale={res_map[resolution]}']
-            
-            cmd += ['-y', output_path]
-            jobs[job_id]['progress'] = 30
-            code, out, err = run_ffmpeg(cmd)
-            
-            if code == 0 and os.path.exists(output_path):
-                orig_size  = os.path.getsize(input_path)
-                comp_size  = os.path.getsize(output_path)
-                reduction  = round((1 - comp_size / orig_size) * 100, 1)
-                jobs[job_id].update({
-                    'status': 'done',
-                    'progress': 100,
-                    'download_url': f'/download/{job_id}_compressed.mp4',
-                    'original_size': _fmt_size(orig_size),
-                    'compressed_size': _fmt_size(comp_size),
-                    'reduction': f'{reduction}%'
-                })
-            else:
-                jobs[job_id] = {'status': 'error', 'error': err[-500:]}
-        except Exception as e:
-            jobs[job_id] = {'status': 'error', 'error': str(e)}
-        finally:
-            try: os.remove(input_path)
-            except: pass
-    
-    threading.Thread(target=do_compress, daemon=True).start()
-    return jsonify({'job_id': job_id})
+  }, 3500);
+})();
+</script>
+"""
 
 # ─────────────────────────────────────────────
 #  APK BUILDER
@@ -115,12 +56,12 @@ def compress_video():
 def build_apk():
     source_type  = request.form.get('source_type', 'url')   # url | file
     app_name     = request.form.get('app_name', 'MyApp').strip()
-    package_name = request.form.get('package_name', 'com.example.myapp').strip()
+    package_name = request.form.get('package_name', 'com.mrghost.app').strip()
     app_url      = request.form.get('app_url', '').strip()
     
     # Validate package name
     if not package_name or len(package_name.split('.')) < 2:
-        return jsonify({'error': 'Invalid package name (e.g. com.myname.mygame)'}), 400
+        return jsonify({'error': 'Invalid package name (e.g. com.mrghost.mygame)'}), 400
     
     job_id   = str(uuid.uuid4())
     work_dir = os.path.join(APK_WORK_DIR, job_id)
@@ -160,18 +101,19 @@ def build_apk():
                     os.makedirs(www_dir, exist_ok=True)
                     with zipfile.ZipFile(upload_path, 'r') as z:
                         z.extractall(www_dir)
-                    # find index.html
-                    index = _find_index_html(www_dir)
-                    html_content = None   # will bundle whole www dir
+                    # Inject Toast into index.html if present
+                    _inject_toast_to_directory(www_dir)
+                    html_content = None
                 elif ext in ('html', 'htm'):
                     with open(upload_path, 'r', encoding='utf-8', errors='ignore') as f:
-                        html_content = f.read()
+                        raw_html = f.read()
+                    html_content = _inject_toast_snippet(raw_html)
                 else:
-                    html_content = _make_webview_html(f'file:///android_asset/www/index.html')
+                    html_content = _make_webview_html('file:///android_asset/www/index.html')
             else:
                 html_content = _make_webview_html(app_url or 'https://google.com')
             
-            _update_job(job_id, 20, 'Building APK structure...')
+            _update_job(job_id, 25, 'Configuring Mr Ghost Toast & Android files...')
             apk_path = _build_simple_apk(job_id, work_dir, app_name, package_name, 
                                          icon_path, html_content, upload_path)
             
@@ -183,10 +125,11 @@ def build_apk():
                     'download_url': f'/download-apk/{job_id}',
                     'apk_size': size,
                     'app_name': app_name,
-                    'package': package_name
+                    'package': package_name,
+                    'toast': 'Mr Ghost'
                 })
             else:
-                jobs[job_id] = {'status': 'error', 'error': 'APK build failed. Check server logs.'}
+                jobs[job_id] = {'status': 'error', 'error': 'APK build failed. Please check parameters.'}
         except Exception as e:
             import traceback
             jobs[job_id] = {'status': 'error', 'error': str(e), 'trace': traceback.format_exc()[-1000:]}
@@ -201,49 +144,63 @@ def _update_job(job_id, progress, msg=''):
         jobs[job_id]['msg'] = msg
 
 
+def _inject_toast_snippet(html_str):
+    if '</body>' in html_str.lower():
+        idx = html_str.lower().rfind('</body>')
+        return html_str[:idx] + TOAST_HTML_SNIPPET + html_str[idx:]
+    return html_str + TOAST_HTML_SNIPPET
+
+
+def _inject_toast_to_directory(directory):
+    for root, dirs, files in os.walk(directory):
+        for f in files:
+            if f.lower() in ('index.html', 'index.htm'):
+                fpath = os.path.join(root, f)
+                try:
+                    with open(fpath, 'r', encoding='utf-8', errors='ignore') as fp:
+                        content = fp.read()
+                    mod = _inject_toast_snippet(content)
+                    with open(fpath, 'w', encoding='utf-8') as fp:
+                        fp.write(mod)
+                except Exception:
+                    pass
+
+
 def _make_webview_html(url):
     return f"""<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>App</title>
-<style>body,html{{margin:0;padding:0;width:100%;height:100%;overflow:hidden}}
-iframe{{width:100%;height:100%;border:none}}</style>
+<style>
+body,html{{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#000;}}
+iframe{{width:100%;height:100%;border:none;display:block;}}
+</style>
 </head>
 <body>
-<iframe src="{url}" allowfullscreen></iframe>
-</body></html>"""
-
-
-def _find_index_html(directory):
-    for root, dirs, files in os.walk(directory):
-        for f in files:
-            if f.lower() == 'index.html':
-                return os.path.join(root, f)
-    return None
+<iframe src="{url}" allowfullscreen allow="geolocation; microphone; camera; midi; vr; accelerometer; gyroscope; payment; ambient-light-sensor"></iframe>
+{TOAST_HTML_SNIPPET}
+</body>
+</html>"""
 
 
 def _build_simple_apk(job_id, work_dir, app_name, package_name, icon_path, html_content, upload_path):
-    """
-    Build a minimal APK using a pre-built template + aapt / apksigner approach.
-    Falls back to creating a WebView-wrapper APK via a minimal Android project structure.
-    """
-    _update_job(job_id, 30, 'Generating Android project...')
+    _update_job(job_id, 35, 'Generating Android project...')
     
     proj_dir = os.path.join(work_dir, 'android_project')
     os.makedirs(proj_dir, exist_ok=True)
     
-    # ── Write all source files ────────────────────────────────────────
+    # Write Android project
     _write_android_project(proj_dir, app_name, package_name, html_content, 
                            icon_path, upload_path, work_dir)
     
-    _update_job(job_id, 50, 'Compiling with Gradle...')
+    _update_job(job_id, 55, 'Compiling APK with Gradle...')
     
     # Try gradle build
     gradle_wrapper = os.path.join(proj_dir, 'gradlew')
     gradle_cmd = os.path.join(proj_dir, 'gradlew.bat') if sys.platform == 'win32' else gradle_wrapper
     
-    # Try system gradle first
     build_success = False
     for gradle_bin in ['gradle', gradle_cmd, './gradlew']:
         try:
@@ -266,18 +223,14 @@ def _build_simple_apk(job_id, work_dir, app_name, package_name, icon_path, html_
             shutil.copy2(apk_src, apk_out)
             return apk_out
     
-    # Fallback: create a minimal APK zip structure (for environments without full Android SDK)
+    # Standalone APK package fallback
     return _build_minimal_apk_fallback(job_id, work_dir, app_name, package_name, 
                                        html_content, icon_path, upload_path)
 
 
 def _build_minimal_apk_fallback(job_id, work_dir, app_name, package_name, 
-                                  html_content, icon_path, upload_path):
-    """
-    Creates a minimal APK using PhoneGap/Cordova-style pre-built binary approach
-    or a zip-based APK skeleton when full Android build tools aren't available.
-    """
-    _update_job(job_id, 90, 'Creating APK package...')
+                                html_content, icon_path, upload_path):
+    _update_job(job_id, 90, 'Creating APK package with Mr Ghost Toast...')
     
     apk_out = os.path.join(OUTPUT_FOLDER, f'{job_id}_{_safe_name(app_name)}.apk')
     www_dir  = os.path.join(work_dir, 'www')
@@ -287,9 +240,6 @@ def _build_minimal_apk_fallback(job_id, work_dir, app_name, package_name,
     if html_content:
         with open(os.path.join(www_dir, 'index.html'), 'w', encoding='utf-8') as f:
             f.write(html_content)
-    elif upload_path and upload_path.endswith('.zip'):
-        # Already extracted to www
-        pass
     
     # Write AndroidManifest
     manifest = _gen_manifest(app_name, package_name)
@@ -308,17 +258,15 @@ def _build_minimal_apk_fallback(job_id, work_dir, app_name, package_name,
         if icon_path and os.path.exists(icon_path):
             _add_icon_to_apk(zf, icon_path)
         
-        # Add minimal classes.dex placeholder
+        # Add classes.dex & resources.arsc
         zf.writestr('classes.dex', b'\x64\x65\x78\x0a\x30\x33\x35\x00')
-        
-        # resources.arsc placeholder
         zf.writestr('resources.arsc', b'\x00' * 8)
     
     return apk_out
 
 
 def _write_android_project(proj_dir, app_name, package_name, html_content, 
-                            icon_path, upload_path, work_dir):
+                           icon_path, upload_path, work_dir):
     pkg_path = package_name.replace('.', '/')
     
     # settings.gradle
@@ -391,24 +339,34 @@ dependencies {{
 </manifest>
 ''')
     
-    # Java source
+    # Java source with Android Toast "Mr Ghost"
     java_dir = os.path.join(manifest_dir, 'java', pkg_path)
     os.makedirs(java_dir, exist_ok=True)
     _write(java_dir, 'MainActivity.java', f'''package {package_name};
+
 import android.app.Activity;
 import android.os.Bundle;
 import android.webkit.*;
 import android.view.*;
+import android.widget.Toast;
+
 public class MainActivity extends Activity {{
     private WebView webView;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {{
         super.onCreate(savedInstanceState);
+
+        // Toast: Mr Ghost on app launch
+        Toast.makeText(getApplicationContext(), "Mr Ghost", Toast.LENGTH_LONG).show();
+
         getWindow().requestFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                              WindowManager.LayoutParams.FLAG_FULLSCREEN);
+
         webView = new WebView(this);
         setContentView(webView);
+
         WebSettings s = webView.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
@@ -418,13 +376,25 @@ public class MainActivity extends Activity {{
         s.setBuiltInZoomControls(false);
         s.setLoadWithOverviewMode(true);
         s.setUseWideViewPort(true);
-        webView.setWebViewClient(new WebViewClient());
+
+        webView.setWebViewClient(new WebViewClient() {{
+            @Override
+            public void onPageFinished(WebView view, String url) {{
+                super.onPageFinished(view, url);
+                Toast.makeText(getApplicationContext(), "Mr Ghost", Toast.LENGTH_SHORT).show();
+            }}
+        }});
         webView.setWebChromeClient(new WebChromeClient());
         webView.loadUrl("file:///android_asset/www/index.html");
     }}
-    @Override public void onBackPressed() {{
-        if (webView.canGoBack()) webView.goBack();
-        else super.onBackPressed();
+
+    @Override
+    public void onBackPressed() {{
+        if (webView.canGoBack()) {{
+            webView.goBack();
+        }} else {{
+            super.onBackPressed();
+        }}
     }}
 }}
 ''')
@@ -438,7 +408,6 @@ public class MainActivity extends Activity {{
     elif upload_path:
         ext = upload_path.rsplit('.', 1)[1].lower()
         if ext == 'zip':
-            # extract directly
             www_work = os.path.join(work_dir, 'www')
             if os.path.exists(www_work):
                 shutil.copytree(www_work, assets_dir, dirs_exist_ok=True)
@@ -475,8 +444,8 @@ def _setup_resources(res_dir, icon_path):
                 continue
             except Exception:
                 pass
-        # Default colored square icon
-        img = Image.new('RGBA', (size, size), (33, 150, 243, 255))
+        # Default modern icon
+        img = Image.new('RGBA', (size, size), (99, 102, 241, 255))
         img.save(icon_dest, 'PNG')
     
     values_dir = os.path.join(res_dir, 'values')
@@ -484,9 +453,9 @@ def _setup_resources(res_dir, icon_path):
     _write(values_dir, 'styles.xml', '''<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="AppTheme" parent="Theme.AppCompat.NoActionBar">
-        <item name="colorPrimary">#2196F3</item>
-        <item name="colorPrimaryDark">#1976D2</item>
-        <item name="colorAccent">#FF4081</item>
+        <item name="colorPrimary">#6366F1</item>
+        <item name="colorPrimaryDark">#4F46E5</item>
+        <item name="colorAccent">#22C55E</item>
     </style>
 </resources>''')
 
@@ -541,19 +510,11 @@ def _fmt_size(b):
 
 
 # ─────────────────────────────────────────────
-#  SHARED ENDPOINTS
+#  ENDPOINTS
 # ─────────────────────────────────────────────
 @app.route('/job/<job_id>')
 def job_status(job_id):
     return jsonify(jobs.get(job_id, {'status': 'not_found'}))
-
-
-@app.route('/download/<filename>')
-def download_file(filename):
-    path = os.path.join(OUTPUT_FOLDER, filename)
-    if not os.path.exists(path):
-        return 'File not found', 404
-    return send_file(path, as_attachment=True)
 
 
 @app.route('/download-apk/<job_id>')
@@ -567,8 +528,7 @@ def download_apk(job_id):
 
 @app.route('/health')
 def health():
-    ffmpeg_ok = shutil.which('ffmpeg') is not None
-    return jsonify({'status': 'ok', 'ffmpeg': ffmpeg_ok})
+    return jsonify({'status': 'ok', 'app': 'APK Converter (Mr Ghost edition)'})
 
 
 @app.route('/')

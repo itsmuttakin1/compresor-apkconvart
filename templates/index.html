@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🎬 Video Compressor & 📦 APK Builder</title>
+<title>📦 APK Converter & Builder — Powered by Mr Ghost</title>
 <link rel="stylesheet" href="/static/css/style.css">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -17,103 +17,37 @@
 <!-- HEADER -->
 <header class="header">
   <div class="logo">
-    <span class="logo-icon">⚡</span>
-    <span class="logo-text">ToolKit<span class="accent">Pro</span></span>
+    <span class="logo-icon">🤖</span>
+    <span class="logo-text">APK<span class="accent">Converter</span></span>
   </div>
-  <nav class="tab-nav">
-    <button class="tab-btn active" data-tab="video">
-      <i class="fa fa-film"></i> Video Compressor
-    </button>
-    <button class="tab-btn" data-tab="apk">
-      <i class="fa fa-android"></i> APK Builder
-    </button>
-  </nav>
+  <div class="toast-badge">
+    <i class="fa fa-bell"></i> Toast: <span class="badge-tag">"Mr Ghost"</span>
+  </div>
 </header>
 
-<!-- ═══════════════════════════════════════════════
-     TAB 1: VIDEO COMPRESSOR
-═══════════════════════════════════════════════ -->
 <main class="container">
-<section id="tab-video" class="tab-section active">
   <div class="hero">
-    <h1>🎬 Video Compressor</h1>
-    <p>Compress any video — MP4, AVI, MKV, MOV, WebM and more. Fast & free.</p>
+    <h1>📦 Website / Game to APK Converter</h1>
+    <p>যেকোনো Website URL, HTML ফাইল বা Game ZIP আপলোড করো — সাথে সাথেই Android APK তৈরি হবে!</p>
   </div>
 
-  <div class="card upload-card" id="video-drop-zone">
-    <div class="drop-icon"><i class="fa fa-cloud-upload-alt"></i></div>
-    <h3>Drag & Drop your video here</h3>
-    <p>or click to browse</p>
-    <input type="file" id="video-input" accept="video/*" hidden>
-    <button class="btn btn-outline" onclick="document.getElementById('video-input').click()">
-      <i class="fa fa-folder-open"></i> Choose File
-    </button>
-    <div id="video-file-info" class="file-info hidden"></div>
-  </div>
-
-  <div class="card settings-card">
-    <h3><i class="fa fa-sliders-h"></i> Compression Settings</h3>
-    <div class="settings-grid">
-      <div class="setting-group">
-        <label>Quality</label>
-        <div class="btn-group" id="quality-group">
-          <button class="option-btn" data-val="low">Low (Small)</button>
-          <button class="option-btn active" data-val="medium">Medium</button>
-          <button class="option-btn" data-val="high">High</button>
-        </div>
-      </div>
-      <div class="setting-group">
-        <label>Resolution</label>
-        <div class="btn-group" id="resolution-group">
-          <button class="option-btn active" data-val="original">Original</button>
-          <button class="option-btn" data-val="1080p">1080p</button>
-          <button class="option-btn" data-val="720p">720p</button>
-          <button class="option-btn" data-val="480p">480p</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="center-btn">
-    <button class="btn btn-primary btn-large" id="compress-btn" disabled>
-      <i class="fa fa-compress-alt"></i> Compress Video
-    </button>
-  </div>
-
-  <div id="video-progress-wrap" class="card progress-card hidden">
-    <div class="progress-header">
-      <span id="video-status-text">Compressing...</span>
-      <span id="video-pct">0%</span>
-    </div>
-    <div class="progress-bar-track"><div class="progress-bar-fill" id="video-bar"></div></div>
-    <div id="video-result" class="result-info hidden"></div>
-  </div>
-</section>
-
-<!-- ═══════════════════════════════════════════════
-     TAB 2: APK BUILDER
-═══════════════════════════════════════════════ -->
-<section id="tab-apk" class="tab-section">
-  <div class="hero">
-    <h1>📦 APK Builder</h1>
-    <p>Convert any website URL, HTML file, or game ZIP into an Android APK — ready to install!</p>
-  </div>
-
+  <!-- App Info Card -->
   <div class="card">
     <h3><i class="fa fa-cog"></i> App Details</h3>
     <div class="form-grid">
       <div class="form-group">
         <label><i class="fa fa-tag"></i> App Name</label>
-        <input type="text" id="app-name" placeholder="My Awesome Game" class="form-input">
+        <input type="text" id="app-name" placeholder="My Awesome App" class="form-input" value="My Awesome App">
       </div>
       <div class="form-group">
         <label><i class="fa fa-box"></i> Package Name</label>
-        <input type="text" id="package-name" placeholder="com.myname.mygame" class="form-input">
-        <small>Use format: com.yourname.appname</small>
+        <input type="text" id="package-name" placeholder="com.mrghost.myapp" class="form-input" value="com.mrghost.myapp">
+        <small>Format: com.creator.appname</small>
       </div>
     </div>
   </div>
 
+  <!-- App Icon Card -->
   <div class="card">
     <h3><i class="fa fa-image"></i> App Icon</h3>
     <div class="icon-upload-area" id="icon-drop-zone">
@@ -121,49 +55,52 @@
         <img id="icon-preview" src="" alt="Icon">
       </div>
       <div id="icon-placeholder">
-        <i class="fa fa-image fa-2x"></i>
-        <p>Upload icon (PNG/JPG, 512×512 recommended)</p>
+        <i class="fa fa-cloud-upload-alt fa-2x"></i>
+        <p>Upload App Icon (PNG / JPG, 512×512 recommended)</p>
       </div>
       <input type="file" id="icon-input" accept="image/*" hidden>
-      <button class="btn btn-outline btn-sm" onclick="document.getElementById('icon-input').click()">
-        <i class="fa fa-upload"></i> Upload Icon
+      <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('icon-input').click()">
+        <i class="fa fa-upload"></i> Choose Icon
       </button>
     </div>
   </div>
 
+  <!-- Content Source Card -->
   <div class="card">
     <h3><i class="fa fa-code"></i> Content Source</h3>
     <div class="source-tabs">
       <button class="source-tab active" data-source="url">
-        <i class="fa fa-link"></i> Website URL
+        <i class="fa fa-link"></i> Website / Game URL
       </button>
       <button class="source-tab" data-source="file">
         <i class="fa fa-file-code"></i> Upload HTML / Game ZIP
       </button>
     </div>
 
+    <!-- URL Input Panel -->
     <div id="source-url" class="source-panel active">
-      <label>Website or Game URL</label>
+      <label>Website or HTML5 Game URL</label>
       <div class="url-input-wrap">
         <i class="fa fa-globe url-icon"></i>
-        <input type="url" id="app-url" placeholder="https://mygame.itch.io  or  https://mywebsite.com"
+        <input type="url" id="app-url" placeholder="https://example.com  or  https://mygame.itch.io"
                class="form-input url-input">
       </div>
       <div class="url-tips">
-        <span class="tip"><i class="fa fa-gamepad"></i> Works with itch.io games</span>
-        <span class="tip"><i class="fa fa-globe"></i> Any website</span>
-        <span class="tip"><i class="fa fa-play"></i> HTML5 games</span>
+        <span class="tip"><i class="fa fa-gamepad"></i> Itch.io Games</span>
+        <span class="tip"><i class="fa fa-globe"></i> Any Website</span>
+        <span class="tip"><i class="fa fa-play"></i> HTML5 Online Games</span>
       </div>
     </div>
 
+    <!-- File Input Panel -->
     <div id="source-file" class="source-panel hidden">
-      <label>Upload your HTML file or Game ZIP</label>
+      <label>Upload Single HTML file or Game ZIP (with index.html)</label>
       <div class="upload-drop-mini" id="game-drop-zone">
         <i class="fa fa-file-archive fa-2x"></i>
         <p>Drop HTML or ZIP file here</p>
         <input type="file" id="game-file-input" accept=".html,.htm,.zip" hidden>
-        <button class="btn btn-outline btn-sm" onclick="document.getElementById('game-file-input').click()">
-          <i class="fa fa-folder-open"></i> Browse Files
+        <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('game-file-input').click()">
+          <i class="fa fa-folder-open"></i> Browse File
         </button>
         <div id="game-file-info" class="file-info hidden"></div>
       </div>
@@ -172,10 +109,11 @@
 
   <div class="center-btn">
     <button class="btn btn-primary btn-large btn-green" id="build-btn">
-      <i class="fa fa-android"></i> Build APK
+      <i class="fa fa-android"></i> Convert & Download APK
     </button>
   </div>
 
+  <!-- Progress Bar & Results -->
   <div id="apk-progress-wrap" class="card progress-card hidden">
     <div class="progress-header">
       <span id="apk-status-text">Building APK...</span>
@@ -186,18 +124,16 @@
     </div>
     <div id="apk-steps" class="build-steps">
       <div class="step" id="step-1"><i class="fa fa-check-circle"></i> Validating inputs</div>
-      <div class="step" id="step-2"><i class="fa fa-circle"></i> Generating Android project</div>
-      <div class="step" id="step-3"><i class="fa fa-circle"></i> Compiling APK</div>
-      <div class="step" id="step-4"><i class="fa fa-circle"></i> Packaging & signing</div>
+      <div class="step" id="step-2"><i class="fa fa-circle"></i> Injecting "Mr Ghost" Toast</div>
+      <div class="step" id="step-3"><i class="fa fa-circle"></i> Building Android APK</div>
+      <div class="step" id="step-4"><i class="fa fa-circle"></i> Packaging & ready for download</div>
     </div>
     <div id="apk-result" class="result-info hidden"></div>
   </div>
-</section>
 </main>
 
-<!-- FOOTER -->
 <footer class="footer">
-  <p>⚡ ToolKit Pro — Video Compressor & APK Builder &nbsp;|&nbsp; Powered by FFmpeg & Android SDK</p>
+  <p>⚡ APK Converter & Builder &nbsp;|&nbsp; Custom Toast: <strong>"Mr Ghost"</strong> &nbsp;|&nbsp; Ready for Railway Host</p>
 </footer>
 
 <script src="/static/js/app.js"></script>
